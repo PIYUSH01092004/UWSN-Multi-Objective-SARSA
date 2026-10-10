@@ -148,22 +148,28 @@ def print_environment_summary() -> None:
 # =============================================================================
 # Step 3: Run simulation
 # =============================================================================
+# =============================================================================
 def run_simulation(densities: List[int],
-                   payload_mgr: AudioPayloadManager) -> pd.DataFrame:
-    """Run the full comparative simulation and return the results DataFrame."""
+                   payload_mgr: AudioPayloadManager,
+                   n_mc_runs: int = sim_module.N_MC_RUNS,
+                   n_packets: int = sim_module.N_PACKETS) -> pd.DataFrame:
+    """Run the comparative simulation and return the results DataFrame."""
     print("=" * 72)
-    print("  STEP 3: Comparative Routing Simulation")
+    print("  STEP 3: Comparative Routing Simulation (Monte Carlo Smoothed)")
     print("=" * 72)
-    print(f"  Protocols  : Multi-Objective SARSA  |  EDORQ  |  DBR")
-    print(f"  Densities  : {densities}")
-    print(f"  Packets/run: {sim_module.N_PACKETS}")
-    print(f"  Drift steps: {sim_module.N_DRIFT_STEPS}  (dt={sim_module.DRIFT_DT}s)")
+    print(f"  Protocols    : Multi-Objective SARSA  |  EDORQ  |  DBR")
+    print(f"  Densities    : {densities}")
+    print(f"  MC Runs/point: {n_mc_runs}")
+    print(f"  Packets/run  : {n_packets}  (Total {n_packets * n_mc_runs} pkts/point)")
+    print(f"  Drift steps  : {sim_module.N_DRIFT_STEPS}  (dt={sim_module.DRIFT_DT}s)")
     print()
 
     t_start = time.perf_counter()
     df, plot_paths = sim_module.simulate_and_plot(
         densities=densities,
-        payload_mgr=payload_mgr
+        payload_mgr=payload_mgr,
+        n_mc_runs=n_mc_runs,
+        n_packets=n_packets
     )
     elapsed = time.perf_counter() - t_start
 
@@ -211,7 +217,13 @@ def parse_args():
     parser.add_argument(
         "--quick",
         action="store_true",
-        help="Run with fewer packets (50 instead of 200) for fast testing."
+        help="Run fast test mode with 3 MC runs and 25 packets."
+    )
+    parser.add_argument(
+        "--mc-runs",
+        type=int,
+        default=sim_module.N_MC_RUNS,
+        help="Number of Monte Carlo runs per density point (default: 15)."
     )
     parser.add_argument(
         "--densities",
@@ -238,12 +250,8 @@ def main() -> None:
     args = parse_args()
 
     # Apply CLI overrides
-    if args.quick:
-        sim_module.N_PACKETS = 50
-        logger.info("Quick mode: N_PACKETS set to 50")
-    if args.packets:
-        sim_module.N_PACKETS = args.packets
-        logger.info("N_PACKETS set to %d via --packets", args.packets)
+    n_mc_runs = 3 if args.quick else args.mc_runs
+    n_packets = 25 if args.quick else (args.packets if args.packets else sim_module.N_PACKETS)
 
     densities = args.densities if args.densities else DENSITIES
 
@@ -260,7 +268,7 @@ def main() -> None:
     print_environment_summary()
 
     # ── Step 3: Simulation ────────────────────────────────────────────────────
-    df, plot_paths = run_simulation(densities, payload_mgr)
+    df, plot_paths = run_simulation(densities, payload_mgr, n_mc_runs=n_mc_runs, n_packets=n_packets)
 
     # ── Step 4: Results ───────────────────────────────────────────────────────
     display_results(df, plot_paths)

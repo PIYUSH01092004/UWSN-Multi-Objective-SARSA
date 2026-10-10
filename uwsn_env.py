@@ -132,6 +132,7 @@ class UWSNEnvironment:
 
         # Deploy sensor nodes
         self.nodes: List[SensorNode] = self._deploy_nodes()
+        self._positions: np.ndarray = np.array([[n.x, n.y, n.z] for n in self.nodes], dtype=np.float64)
 
         logger.debug("UWSNEnvironment: %d nodes, %d sinks, seed=%d", n_nodes, N_SINKS, seed)
 
@@ -182,7 +183,7 @@ class UWSNEnvironment:
         Advance node positions by one time step dt (seconds) using
         horizontal random-walk drift model. Positions wrap within [0, SPACE_X/Y].
         """
-        for node in self.nodes:
+        for i, node in enumerate(self.nodes):
             if not node.alive:
                 continue
 
@@ -200,6 +201,8 @@ class UWSNEnvironment:
             node.x = (node.x + node.drift_vx * dt) % SPACE_X
             node.y = (node.y + node.drift_vy * dt) % SPACE_Y
             # z remains constant (vertical buoyancy assumed stable)
+            self._positions[i, 0] = node.x
+            self._positions[i, 1] = node.y
 
         self.time += dt
         self.round += 1
@@ -208,15 +211,14 @@ class UWSNEnvironment:
     def get_neighbors(self, node: SensorNode, r_max: float = R_MAX) -> List[SensorNode]:
         """
         Return list of alive sensor nodes within R_MAX of the given node
-        (excluding itself).
+        (excluding itself) using vectorized distance check.
         """
-        neighbors = []
-        for other in self.nodes:
-            if other.node_id == node.node_id or not other.alive:
-                continue
-            if node.is_in_range(other.position(), r_max):
-                neighbors.append(other)
-        return neighbors
+        pos = self._positions[node.node_id]
+        dists_sq = np.sum((self._positions - pos) ** 2, axis=1)
+        r2 = r_max * r_max
+        mask = (dists_sq <= r2) & (dists_sq > 0.0)
+        indices = np.where(mask)[0]
+        return [self.nodes[i] for i in indices if self.nodes[i].alive]
 
     def get_sink_neighbors(self, node: SensorNode, r_max: float = R_MAX) -> List[SinkNode]:
         """Return sinks within R_MAX of the given node."""
