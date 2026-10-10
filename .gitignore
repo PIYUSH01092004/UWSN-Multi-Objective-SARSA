@@ -1,0 +1,28 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Large Audio Datasets (Must not be pushed to GitHub)
+Dataset/
+*.wav
+*.mp3
+*.flac
+
+# Logs & Virtual environments
+*.log
+venv/
+.venv/
+env/
+ENV/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
