@@ -26,3 +26,12 @@ desktop.ini
 # IDE files
 .vscode/
 .idea/
+
+# Research Paper, PDFs and LaTeX build files (Kept private locally)
+*.tex
+*.pdf
+*.aux
+*.log
+*.out
+*.synctex.gz
+*_2.png
